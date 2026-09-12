@@ -22,6 +22,7 @@ import com.unixity.pwrmessage.data.local.AppDatabase
 import com.unixity.pwrmessage.data.local.ChatEntity
 import com.unixity.pwrmessage.data.prefs.UserPrefs
 import com.unixity.pwrmessage.data.remote.ApiService
+import com.unixity.pwrmessage.data.remote.OnlineUser
 import com.unixity.pwrmessage.data.remote.SocketManager
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -30,7 +31,7 @@ import kotlinx.coroutines.withContext
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ChatListScreen(
-    onlineUsers: List<String>,
+    onlineUsers: List<OnlineUser>,
     onChatSelected: (String) -> Unit,
     onLogout: () -> Unit
 ) {
@@ -106,7 +107,7 @@ fun ChatListScreen(
         ) {
             items(chats) { chat ->
                 val isBlocked = blockedUsers.contains(chat.username)
-                val isOnline = onlineUsers.contains(chat.username)
+                val isOnline = onlineUsers.any { it.user == chat.username }
 
                 Card(
                     modifier = Modifier

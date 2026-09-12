@@ -10,9 +10,8 @@ import androidx.activity.enableEdgeToEdge
 import androidx.compose.runtime.*
 import androidx.compose.ui.platform.LocalContext
 import com.unixity.pwrmessage.data.local.AppDatabase
-import com.unixity.pwrmessage.data.local.ChatEntity
-import com.unixity.pwrmessage.data.local.MessageEntity
 import com.unixity.pwrmessage.data.prefs.UserPrefs
+import com.unixity.pwrmessage.data.remote.OnlineUser
 import com.unixity.pwrmessage.data.remote.SocketManager
 import com.unixity.pwrmessage.ui.auth.AuthScreen
 import com.unixity.pwrmessage.ui.chat.ChatListScreen
@@ -38,21 +37,33 @@ class MainActivity : ComponentActivity() {
             }
         }
     }
+
+    override fun onStart() {
+        super.onStart()
+        SocketManager.isAppVisible = true
+    }
+
+    override fun onStop() {
+        super.onStop()
+        SocketManager.isAppVisible = false
+    }
 }
 
 @Composable
 fun PwrMessageApp() {
     val context = LocalContext.current
-    val db = remember { AppDatabase.getInstance(context) }
-    val scope = rememberCoroutineScope()
 
     var screen by remember {
         mutableStateOf<Screen>(
             if (UserPrefs.isLoggedIn(context)) Screen.ChatList else Screen.Auth
         )
     }
-    var onlineUsers by remember { mutableStateOf<List<String>>(emptyList()) }
+    var onlineUsers by remember { mutableStateOf<List<OnlineUser>>(emptyList()) }
     var activeChat by remember { mutableStateOf<String?>(null) }
+
+    LaunchedEffect(activeChat) {
+        SocketManager.activeChat = activeChat
+    }
 
     LaunchedEffect(Unit) {
         if (android.os.Build.VERSION.SDK_INT >= 33) {
@@ -64,7 +75,7 @@ fun PwrMessageApp() {
         val serviceIntent = Intent(context, SocketService::class.java)
         context.startForegroundService(serviceIntent)
         val token = UserPrefs.getToken(context) ?: return@LaunchedEffect
-        connectSocket(token, db, scope, activeChat, onlineUsersChanged = { onlineUsers = it }, context)
+        connectSocket(token, onlineUsersChanged = { onlineUsers = it })
     }
 
     fun logout() {
@@ -92,7 +103,7 @@ fun PwrMessageApp() {
         is Screen.Auth -> AuthScreen(
             onAuthSuccess = {
                 val token = UserPrefs.getToken(context) ?: return@AuthScreen
-                connectSocket(token, db, scope, activeChat, onlineUsersChanged = { onlineUsers = it }, context)
+                connectSocket(token, onlineUsersChanged = { onlineUsers = it })
                 screen = Screen.ChatList
             }
         )
@@ -117,51 +128,9 @@ fun PwrMessageApp() {
 
 private fun connectSocket(
     token: String,
-    db: AppDatabase,
-    scope: CoroutineScope,
-    activeChat: String?,
-    onlineUsersChanged: (List<String>) -> Unit,
-    context: android.content.Context
+    onlineUsersChanged: (List<OnlineUser>) -> Unit
 ) {
     SocketManager.onUserList = { users -> onlineUsersChanged(users) }
-
-    SocketManager.onMessage = { msg ->
-        scope.launch(Dispatchers.IO) {
-            if (db.isBlocked(msg.from)) return@launch
-            db.upsertChat(ChatEntity(msg.from, unread = activeChat != msg.from))
-            android.os.Handler(android.os.Looper.getMainLooper()).post {
-                SocketManager.chatListUpdateListener?.invoke()
-                SocketManager.messageUpdateListener?.invoke()
-            }
-
-            if (msg.type == "image") {
-                val fileName = "img_${System.currentTimeMillis()}"
-                val file = java.io.File(context.cacheDir, fileName)
-                file.writeText(msg.text)
-                db.insertMessage(
-                    MessageEntity(
-                        chatWith = msg.from,
-                        text = file.absolutePath,
-                        type = "image",
-                        time = System.currentTimeMillis()
-                    )
-                )
-            } else {
-                db.insertMessage(
-                    MessageEntity(
-                        chatWith = msg.from,
-                        text = msg.text,
-                        type = "received",
-                        time = System.currentTimeMillis()
-                    )
-                )
-            }
-
-            android.os.Handler(android.os.Looper.getMainLooper()).post {
-                SocketManager.messageUpdateListener?.invoke()
-            }
-        }
-    }
 
     SocketManager.onAuthError = {}
     SocketManager.connect(token)

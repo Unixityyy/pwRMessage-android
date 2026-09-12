@@ -33,13 +33,14 @@ import kotlinx.coroutines.launch
 import java.io.InputStream
 import android.util.Base64
 import androidx.compose.material.icons.filled.CameraAlt
+import com.unixity.pwrmessage.data.remote.OnlineUser
 import kotlinx.coroutines.withContext
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun MessageScreen(
     chatWith: String,
-    onlineUsers: List<String>,
+    onlineUsers: List<OnlineUser>,
     onBack: () -> Unit
 ) {
 
@@ -50,7 +51,8 @@ fun MessageScreen(
 
     val messages = remember { mutableStateListOf<MessageEntity>() }
     var messageText by remember { mutableStateOf("") }
-    val isOnline = onlineUsers.contains(chatWith)
+    val onlineMatch = onlineUsers.find { it.user == chatWith }
+    val isOnline = onlineMatch != null
 
     fun showToast(msg: String) = Toast.makeText(context, msg, Toast.LENGTH_SHORT).show()
 
@@ -209,7 +211,8 @@ fun MessageScreen(
                     Column {
                         Text(chatWith, fontWeight = FontWeight.Bold)
                         Text(
-                            text = if (isOnline) "Online" else "Offline",
+                            text = if (isOnline) "Online on ${ClientNamesManager.getFriendlyName(
+                                onlineMatch.clientId)}" else "Offline",
                             fontSize = 12.sp,
                             color = if (isOnline) Color(0xFF4CAF50) else Color.Gray
                         )
@@ -264,7 +267,17 @@ fun MessageScreen(
                         },
                         enabled = isOnline,
                         singleLine = true,
-                        shape = RoundedCornerShape(24.dp)
+                        shape = RoundedCornerShape(24.dp),
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedTextColor = MaterialTheme.colorScheme.onSurface,
+                            unfocusedTextColor = MaterialTheme.colorScheme.onSurface,
+                            disabledTextColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f),
+                            focusedContainerColor = MaterialTheme.colorScheme.surfaceVariant,
+                            unfocusedContainerColor = MaterialTheme.colorScheme.surfaceVariant,
+                            disabledContainerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f),
+                            focusedPlaceholderColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                            unfocusedPlaceholderColor = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
                     )
 
                     Spacer(modifier = Modifier.width(8.dp))
@@ -340,7 +353,7 @@ fun MessageScreen(
                         } else {
                             Text(
                                 text = msg.text,
-                                color = if (isSent) Color.White
+                                color = if (isSent) MaterialTheme.colorScheme.onPrimary
                                 else MaterialTheme.colorScheme.onSurfaceVariant
                             )
                         }

@@ -40,7 +40,11 @@ class SocketService : Service() {
         SocketManager.onMessage = { msg ->
             scope.launch {
                 if (db.isBlocked(msg.from)) return@launch
-                db.upsertChat(ChatEntity(msg.from, unread = true))
+
+                val isCurrentChat = SocketManager.activeChat == msg.from
+                val shouldSuppress = SocketManager.isAppVisible && isCurrentChat
+
+                db.upsertChat(ChatEntity(msg.from, unread = !shouldSuppress))
                 android.os.Handler(android.os.Looper.getMainLooper()).post {
                     SocketManager.chatListUpdateListener?.invoke()
                     SocketManager.messageUpdateListener?.invoke()
@@ -72,7 +76,10 @@ class SocketService : Service() {
                 android.os.Handler(android.os.Looper.getMainLooper()).post {
                     SocketManager.messageUpdateListener?.invoke()
                 }
-                showMessageNotification(msg.from, msg.text, msg.type)
+
+                if (!shouldSuppress) {
+                    showMessageNotification(msg.from, msg.text, msg.type)
+                }
             }
         }
 
