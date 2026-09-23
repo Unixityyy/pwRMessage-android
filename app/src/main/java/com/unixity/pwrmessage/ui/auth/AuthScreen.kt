@@ -1,6 +1,9 @@
 package com.unixity.pwrmessage.ui.auth
 
 import android.widget.Toast
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.text.selection.SelectionContainer
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
@@ -26,6 +29,7 @@ fun AuthScreen(onAuthSuccess: () -> Unit) {
     var username by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
     var isLoading by remember { mutableStateOf(false) }
+    var debugError by remember { mutableStateOf<String?>(null) }
 
     fun showToast(msg: String) =
         Toast.makeText(context, msg, Toast.LENGTH_SHORT).show()
@@ -51,10 +55,34 @@ fun AuthScreen(onAuthSuccess: () -> Unit) {
                     showToast("Auth failed")
                 }
             } catch (e: Exception) {
-                showToast("Server unreachable")
+                debugError = "Error: ${e.javaClass.simpleName}\nMessage: ${e.message}\n\nStacktrace:\n${e.stackTraceToString()}"
             }
             isLoading = false
         }
+    }
+
+    if (debugError != null) {
+        AlertDialog(
+            onDismissRequest = { debugError = null },
+            title = { Text("Debug Error Info") },
+            text = {
+                SelectionContainer {
+                    Text(
+                        text = debugError!!,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .heightIn(max = 400.dp)
+                            .verticalScroll(rememberScrollState()),
+                        style = MaterialTheme.typography.bodySmall
+                    )
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = { debugError = null }) {
+                    Text("Dismiss")
+                }
+            }
+        )
     }
 
     Box(

@@ -6,7 +6,7 @@ import retrofit2.converter.gson.GsonConverterFactory
 import retrofit2.http.*
 
 const val API_URL = "https://api.teampwr.dev"
-const val WS_URL = "ws://api.teampwr.dev"
+const val WS_URL = "wss://api.teampwr.dev"
 
 // --- Request/Response models ---
 

@@ -44,13 +44,32 @@
 # --- pwRMessage rules ---
 
 # Gson
--keepattributes Signature
+-keepattributes Signature, InnerClasses, EnclosingMethod
 -keepattributes *Annotation*
 -keep class com.unixity.pwrmessage.** { *; }
 -keep class com.google.gson.** { *; }
 
 # Retrofit
+-keepattributes Signature, InnerClasses, EnclosingMethod, RuntimeVisibleAnnotations, RuntimeInvisibleAnnotations, RuntimeVisibleParameterAnnotations, RuntimeInvisibleParameterAnnotations
 -keepattributes Exceptions
+-keep class retrofit2.** { *; }
+-dontwarn retrofit2.**
+
+# Retain generic signatures and annotations for Retrofit interface methods
+-keep,allowobfuscation,allowshrinking interface retrofit2.Call
+-keep,allowobfuscation,allowshrinking class retrofit2.Response
+
+-keepclassmembers interface * {
+    @retrofit2.http.* <methods>;
+}
+
+# Keep Kotlin coroutines metadata and continuation type signatures
+-keep class kotlin.coroutines.Continuation { *; }
+
+# Keep data models completely intact
+-keep class com.unixity.pwrmessage.data.remote.AuthRequest { *; }
+-keep class com.unixity.pwrmessage.data.remote.AuthResponse { *; }
+-keep class com.unixity.pwrmessage.data.remote.ErrorResponse { *; }
 
 # Socket.IO / okhttp / okio
 -keep class io.socket.** { *; }
